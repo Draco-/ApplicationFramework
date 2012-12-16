@@ -21,3 +21,33 @@ The main script for an application framework.
 This file keeps an application class, that defines the basic elements of the application and the
 'boilerplate' stuff to start an application.
 """
+
+#=====================================================================================================
+# Import section
+#=====================================================================================================
+import sys
+from PyQt4 import QtCore
+from PyQt4 import QtGui
+
+#=====================================================================================================
+# Class Application
+#=====================================================================================================
+class Application(QtGui.QMainWindow):
+    """
+    This class is used as the MainWindow of the application. It sets up the MainWindow and defines other important basics,
+    that are needed in the application. See __init__ method for the implementation details
+    """
+ #=================================================================================================
+    # initializing the application class
+    #=================================================================================================
+    def __init__(self,  *args):
+        """
+        Initialize the MainWindow and the basic elements.
+        This method keeps just the boilerplate stuff and calls methods for the several initialisation steps.
+        Application specific stuff is placed within these methods
+        """
+        
+        # call __init__ method of superclass
+        QtGui.QMainWindow.__init__(self,  *args)   
+    
+

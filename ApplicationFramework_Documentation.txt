@@ -1,0 +1,49 @@
+ Copyright (C) 2012 Jürgen Baumeister
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Lesser General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU Lesser General Public License for more details.
+
+ You should have received a copy of the GNU Lesser General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ 
+ApplicationFramework.txt
+#=====================================================================================================
+Documentation file for the ApplicationFramework
+
+Table of contents
+
+1.    Introduction
+1.1. What is the application framework meant for
+       The application framework is meant as a programming framework and a collection of classes to make it easier to develop a PyQt application using version 4
+       of the PyQt library (PyQt4).
+       It provides a collection of classes, that build a standalone application (without any specific functionality) which is able to run and show the basic behaviour of
+       an application.
+       
+       This basic behaviour includes:
+       - Start the application
+       - Show a main window for the application, including the functionality, that is basic for the operation system (resize window, move window, close the application)
+         This functionality is provided by the PyQt4 library
+       - Enable a closedown of the main window.
+       
+       Additional functionality is provided by separate modules of the application framework.
+       
+1.2. Overview over the philosophy of the application framework
+       The application framework follows a classic model - controller - view paradigm, as described in standard programming literature.
+       In order to clarify my nomenclature and to make it easier to follow this description, I use the following structure.
+       
+       
+       user --- gui --- view --- model --- backframe --- reality
+                      |          |             |
+                      |          ---contr ---
+                      |           
+                    application controll
+                    application services
+
+2. Components of the application framework
