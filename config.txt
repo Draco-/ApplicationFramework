@@ -1,0 +1,5 @@
+# automatically created config file for application framework
+
+# for the moment there are no confiuration data to be stored
+
+# End predefined

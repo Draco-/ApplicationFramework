@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-4.6.dtd">
 <!-- eric4 project file for project ApplicationFramework -->
-<!-- Saved: 2012-12-16, 15:04:04 -->
+<!-- Saved: 2012-12-20, 19:14:37 -->
 <!-- Copyright (C) 2012 ,  -->
 <Project version="4.6">
   <Language>en</Language>
@@ -15,6 +15,9 @@
     <Source>__init__.py</Source>
     <Source>ApplicationFramework.py</Source>
     <Source>ApplicationFramework_Test.py</Source>
+    <Source>ApplicationConfig.py</Source>
+    <Source>services/__init__.py</Source>
+    <Source>icons/__init__.py</Source>
   </Sources>
   <Forms>
   </Forms>
