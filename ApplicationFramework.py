@@ -46,15 +46,12 @@ class Application(QtGui.QMainWindow):
     # signals for class Application
     #=================================================================================================
     # Signals to controll dynamically loaded modules
-    sigInitializeModule = QtCore.pyqtSignal(object)                       # ask a dynamically loaded module to do its own initialisation
-    sigCloseModule = QtCore.pyqtSignal()                                      # singal the module to prepare for shut down of application
+    sigInitializeModule = QtCore.pyqtSignal(object, object)                   # ask a dynamically loaded module to do its own initialisation
+    sigCloseModule = QtCore.pyqtSignal(object)                                # singal the module to prepare for shut down of application
     
     # Signals that build a generic acess model to the application
-    sigStatusBar = QtCore.pyqtSignal(object)                                # send a reference to the application's status bar
-    
-    # Action signals of the application
-    sigStatusMessage = QtCore.pyqtSignal(object)                       # send a text information about the application's status
-
+    sigStatusBar = QtCore.pyqtSignal(object)                                  # send a reference to the application's status bar
+    sigSetServiceMessages = QtCore.pyqtSignal(object, object)
     
     #=================================================================================================
     # initializing the application class
@@ -95,6 +92,8 @@ class Application(QtGui.QMainWindow):
         # Dictionary of available services
         self.services = {}
         
+        self.sigSetServiceMessages.connect(self.slotSetServiceMessages)
+        
         # Load all requires service modules and thell them to start
         for service in AppConfig._serviceList:
             # try to load module dynamically
@@ -104,14 +103,15 @@ class Application(QtGui.QMainWindow):
                 #print mod1, mod2, mod3
                 # load the module found above
                 dynmod = imp.load_module(service[0], mod1, mod2, mod3)
+                modobj = dynmod.get_object(self)
                 mod1.close()        # I'm not shure, if this is necessary
             except:
                 print 'Something went wrong'
             finally:
                 mod1.close()
             # create, bind and initialize a service object from the dynamically loaded module
-            self.services[service[2]] = dynmod.get_object(self)
-            self.sigInitializeModule.emit(self)
+            self.services[modobj] = None
+            self.sigInitializeModule.emit(self, modobj)
             
     def _initActions(self):
         """
@@ -164,14 +164,21 @@ class Application(QtGui.QMainWindow):
         print 'Got request for status bar'
         self.sigStatusBar.emit(self.statusBar())
         
+    def slotSetServiceMessages(self, service, messages):
+        self.services[service]= messages
+        print 'Setting message list for ' + str(service)
+        
         
     def slotTestAction(self):
         #TODO: remove 'testAction', when it is no longer needed
         print 'Test Action is triggered'
         for a in self.actions:
             print a
-        self.sigStatusMessage.connect(self.services['StatusBar'].slotShowMessage)
-        self.sigStatusMessage.emit('Testmessage an die Statuszeile')
+        
+        
+        #msg[0].connect(self.services['StatusBar'].slotShowMessage)
+        service = self.services.keys()[0]
+        self.services[service][0].emit('Testmessage')
         
 
     #=================================================================================================

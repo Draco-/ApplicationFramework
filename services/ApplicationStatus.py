@@ -35,7 +35,7 @@ from PyQt4 import QtGui
 def get_object(application):
     """
     This is required for a module, that can be dynamically loaded by the application class of application framework.
-    the function returns a instantiated 'main' object, that builds the core of the module
+    the function returns an instantiated 'main' object, that builds the core of the module
     """
     # instantiate an object from the application status class
     object = ApplicationStatus()
@@ -59,6 +59,8 @@ class ApplicationStatus(QtCore.QObject):
     #=================================================================================================
     # request a reference to the applications status bar
     sigRequestStatusBar = QtCore.pyqtSignal()
+    
+    sigStatusMessage = QtCore.pyqtSignal(object)
    
     #=================================================================================================
     # initializing the ApplicationStatus class
@@ -73,21 +75,31 @@ class ApplicationStatus(QtCore.QObject):
         self.statusBar = None
         self.canClose = False
         
-    def initialize(self, application):
+    def initialize(self, application, service_obj):
         """
         Slot method, that receives the signal to initialize itself from the application, that 
         holds an object of this class.
         The 'application' parameter is a reference to the application and can be used to
         connect signals from the application and signals to the application
         """
-        #print 'Application Status is going to initialize itself'
+        if self == service_obj:
+            print 'Application Status is going to initialize itself'
 
-        # do the required signal connections for the ApplicationStatus object
-        self.sigRequestStatusBar.connect(application.slotGetStatusBar)
-        application.sigStatusBar.connect(self.slotSetStatusBar)
+            # do the required signal connections for the ApplicationStatus object
+            self.sigRequestStatusBar.connect(application.slotGetStatusBar)
+            application.sigStatusBar.connect(self.slotSetStatusBar)
 
-        # request the reference to the status bar
-        self.sigRequestStatusBar.emit()
+            # request the reference to the status bar
+            self.sigRequestStatusBar.emit()
+            
+            self.sigStatusMessage.connect(self.slotShowMessage)
+            
+            application.sigSetServiceMessages.emit(self, [self.sigStatusMessage])
+            
+            
+    def get_messages(self):
+        result = [self.sigStatusMessage]
+        return result
         
     def prepareClose(self):
         """
