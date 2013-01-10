@@ -40,8 +40,7 @@ def get_object(application):
     # instantiate an object from the application status class
     object = ApplicationStatus()
     # connect the application's module controll signals to the object
-    application.sigInitializeModule.connect(object.initialize)
-    application.sigCloseModule.connect(object.prepareClose)
+    object.initialize(application.get_InfoSignals(), application.get_BoundSignals())
     # return the object
     return object
 
@@ -57,10 +56,11 @@ class ApplicationStatus(QtCore.QObject):
     #=================================================================================================
     # signals for class ApplicationStatus
     #=================================================================================================
-    # request a reference to the applications status bar
-    sigRequestStatusBar = QtCore.pyqtSignal()
+    # to application
+    sigRequestStatusBar = QtCore.pyqtSignal()                 # request a reference to the applications status bar
     
-    sigStatusMessage = QtCore.pyqtSignal(object)
+    #from application
+    sigStatusMessage = QtCore.pyqtSignal(object)              # Show a text message in the status bar
    
     #=================================================================================================
     # initializing the ApplicationStatus class
@@ -74,36 +74,36 @@ class ApplicationStatus(QtCore.QObject):
         # predfine all other instance variables
         self.statusBar = None
         self.canClose = False
+        #self.initialize(application)
+            
+    def initialize(self, infoSignals, boundSignals):
+        print 'Initializing ApplicationStatus'
         
-    def initialize(self, application, service_obj):
-        """
-        Slot method, that receives the signal to initialize itself from the application, that 
-        holds an object of this class.
-        The 'application' parameter is a reference to the application and can be used to
-        connect signals from the application and signals to the application
-        """
-        if self == service_obj:
-            print 'Application Status is going to initialize itself'
-
-            # do the required signal connections for the ApplicationStatus object
-            self.sigRequestStatusBar.connect(application.slotGetStatusBar)
-            application.sigStatusBar.connect(self.slotSetStatusBar)
-
-            # request the reference to the status bar
-            self.sigRequestStatusBar.emit()
+        # Get the reference to the applications status bar
+        infoSignals['StatusBar'].connect(self.slotSetStatusBar)      # bind status bar signal from application to its own slot
+        boundSignals['RequestStatusBar'].emit()                      # request a referenct to the status bar from application
+        
+        # Connect action signals provided by the module to its slots
+        self.sigStatusMessage.connect(self.slotShowMessage)        
+        # use the 'SetServiceMessages' signal form application to register the own signals to the
+        # application
+        boundSignals['SetServiceMessages'].emit('StatusBar', self.get_InfoSignals(), self.get_BoundSignals())
             
-            self.sigStatusMessage.connect(self.slotShowMessage)
-            
-            application.sigSetServiceMessages.emit(self, [self.sigStatusMessage])
-            
-            
-    def get_messages(self):
-        result = [self.sigStatusMessage]
+    #=================================================================================================
+    # get and set methods for the class
+    #=================================================================================================
+    def get_InfoSignals(self):
+        result = {'RequestStatusBar': self.sigRequestStatusBar}
         return result
         
-    def prepareClose(self):
+    def get_BoundSignals(self):
+        result = {'ShowMessage': self.sigStatusMessage}
+        return result
+ 
+ 
+    def slotPrepareClose(self):
         """
-        Slot method required by dynamically loadable module to prepare the closing of the
+        slot method required by dynamically loadable module to prepare the closing of the
         application. Method must cleanup module and set variabel 'canClose' to true
         """
         self.canClose = True

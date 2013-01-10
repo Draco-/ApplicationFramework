@@ -46,12 +46,31 @@ class Application(QtGui.QMainWindow):
     # signals for class Application
     #=================================================================================================
     # Signals to controll dynamically loaded modules
-    sigInitializeModule = QtCore.pyqtSignal(object, object)                   # ask a dynamically loaded module to do its own initialisation
-    sigCloseModule = QtCore.pyqtSignal(object)                                # singal the module to prepare for shut down of application
-    
-    # Signals that build a generic acess model to the application
-    sigStatusBar = QtCore.pyqtSignal(object)                                  # send a reference to the application's status bar
-    sigSetServiceMessages = QtCore.pyqtSignal(object, object)
+    # To module
+    sigResetModule = QtCore.pyqtSignal()                                      # signal all modules to do a reset of the modul
+    sigCloseModule = QtCore.pyqtSignal()                                      # signal all modules to prepare for shut down of application
+
+    sigInfoSignals = QtCore.pyqtSignal(object)                                # send dictionary (reference) of info signals
+    sigBoundSignals = QtCore.pyqtSignal(object)                               # send dictionary (reference) of bound signals
+    sigStatusBar = QtCore.pyqtSignal(object)                                  # send a reference to the applications status bar
+
+
+
+    # From module
+    sigSetServiceMessages = QtCore.pyqtSignal(object, object, object)         # receive a list of available signals from the modules main object
+                                                                              # this signal is meant to be emitted by the modules main object
+                                                                              # to informa ApplicationFramework about the possibilities of the 
+                                                                              # new service.
+                                                                              # the firt object is the service name of the module
+                                                                              # the second object is a dictionary of signals, the modules main object
+                                                                              # uses as information signals. These should be bound to the slots
+                                                                              # of interested objects
+                                                                              # the third object is a dictionary of signals, the module has bound to its
+                                                                              # own slots to perform some action
+    sigRequestStatusBar = QtCore.pyqtSignal()                                 # request a reference to the ApplicationFrameworks status bar.
+                                                                              # the ApplicationFramework will emit sigStatusBar with the reference
+    sigRequestInfoSignals = QtCore.pyqtSignal(object)                         # request the dictionary of info signals for a given service
+    sigRequestBoundSignals = QtCore.pyqtSignal(object)                        # request the dictionary of bound signals for a given service
     
     #=================================================================================================
     # initializing the application class
@@ -92,26 +111,23 @@ class Application(QtGui.QMainWindow):
         # Dictionary of available services
         self.services = {}
         
+        # Bind signals for the module system
         self.sigSetServiceMessages.connect(self.slotSetServiceMessages)
+        self.sigRequestStatusBar.connect(self.slotGetStatusBar)
+        self.sigRequestInfoSignals.connect(self.slotGetInfoSignals)
+        self.sigRequestBoundSignals.connect(self.slotGetBoundSignals)
+
+        # Register application services to the application itself
+        self.services['application_obj'] = self
+        self.services['application_infosignals'] = self.get_InfoSignals()
+        self.services['application_boundsignals'] = self.get_BoundSignals()
         
         # Load all requires service modules and thell them to start
         for service in AppConfig._serviceList:
-            # try to load module dynamically
-            try:
-                # find the appropriate module, using information from serviceList
-                mod1, mod2, mod3 = imp.find_module(service[0], service[1])
-                #print mod1, mod2, mod3
-                # load the module found above
-                dynmod = imp.load_module(service[0], mod1, mod2, mod3)
-                modobj = dynmod.get_object(self)
-                mod1.close()        # I'm not shure, if this is necessary
-            except:
-                print 'Something went wrong'
-            finally:
-                mod1.close()
-            # create, bind and initialize a service object from the dynamically loaded module
-            self.services[modobj] = None
-            self.sigInitializeModule.emit(self, modobj)
+            # load module initialize it and get a main object from the module
+            moduleobject = self.loadModule(service)
+            # register the loaded module (the main object of the module
+            self.services[service[2]+'_obj'] = moduleobject
             
     def _initActions(self):
         """
@@ -148,6 +164,38 @@ class Application(QtGui.QMainWindow):
         #TODO: remove 'testAction', when it is no longer needed
 
     #=================================================================================================
+    # get and set methods for ApplcationFramework
+    #=================================================================================================
+    def get_InfoSignals(self):
+        """
+        Return a dictionary of info signals for the dynamically loaded modules
+        """
+        infoSignals = {'Reset': self.sigResetModule,                      # application requests all modules to reset themselves
+                       'Close': self.sigCloseModule,                      # application requests all modules to close themselves
+                       'StatusBar': self.sigStatusBar}                    # application sends a reference to its status bar to the modules
+        return infoSignals
+    
+    def get_BoundSignals(self):
+        """
+        Return a dictionary of bound signals for the dynamically loaded modules
+        These signals are bound to the ApplicationFrameworks slot methods and are meant for the
+        modules to send signals to the ApplcationFramework
+        """
+        boundSignals = {'SetServiceMessages':self.sigSetServiceMessages,  # module sends dictionary of action signals for the module
+                        'RequestStatusBar':self.sigRequestStatusBar,      # module requests a reference to the status bar of the application
+                        'RequestInfoSignals':self.sigRequestInfoSignals,  # module requests the dictionary with info signals for a specific service
+                        'RequestBoundSignals':self.sigRequestBoundSignals}# module requests the dictionary with bound signals for a specific service
+        return boundSignals
+                        
+    def set_ServiceMessages(self, service, infosignals, boundsignals):
+        """
+        Set the list of service messages for a given service
+        """
+        self.services[service + '_infosignals'] = infosignals
+        self.services[service + '_boundsignals'] = boundsignals
+        print 'Setting message list for ' + str(service)
+
+    #=================================================================================================
     # slot implementations for the application
     #=================================================================================================
     def slotExitApp(self):
@@ -164,23 +212,65 @@ class Application(QtGui.QMainWindow):
         print 'Got request for status bar'
         self.sigStatusBar.emit(self.statusBar())
         
-    def slotSetServiceMessages(self, service, messages):
-        self.services[service]= messages
-        print 'Setting message list for ' + str(service)
+    def slotGetInfoSignals(self, service):
+        """
+        Slot is part of the dynamic module management system.
+        Provides a reference to the dictionary providing the info signals for the service
+        """
+        result = self.services[service + '_infosignals']
+        self.sigInfoSignals.emit(result)
+
+    def slotGetBoundSignals(self, service):
+        """
+        Slot is part of the dynamic module management system.
+        Provides a reference to the dictionary providing the bound signals for the service
+        """
+        result = self.services[service + '_boundsignals']
+        self.sigBoundSignals.emit(result)
+
+    def slotSetServiceMessages(self, service, infosignals, boundsignals):
+        """
+        Receive sigSetServiceMessages and call method get_ServiceMessages with these parameters
+        """
+        self.set_ServiceMessages(service, infosignals, boundsignals)
         
         
     def slotTestAction(self):
         #TODO: remove 'testAction', when it is no longer needed
         print 'Test Action is triggered'
-        for a in self.actions:
-            print a
         
+        # Test module Application Status by sending the ShowMessage signal
+        signal = self.services['StatusBar_boundsignals']['ShowMessage']
+        signal.emit('Testmessage')
         
-        #msg[0].connect(self.services['StatusBar'].slotShowMessage)
-        service = self.services.keys()[0]
-        self.services[service][0].emit('Testmessage')
+    #=================================================================================================
+    # hooks and helper methods for ApplicationFramework
+    #=================================================================================================
+    def loadModule(self, moduleinfo):
+        """
+        Load a module given by modleinfo (a list containing the name of the module and
+        a path to find the module
+        The module is loaded and a main object, the main object of the module is instantiated
+        and returned
+        """
+        # try to load module dynamically
+        try:
+            # find the appropriate module, using information from moduleinfo
+            mod1, mod2, mod3 = imp.find_module(moduleinfo[0], moduleinfo[1])
+            #print mod1, mod2, mod3
+            # load the module found above
+            dynmod = imp.load_module(moduleinfo[0], mod1, mod2, mod3)
+            # every dynamically lodable module needs a function 'get_object'
+            # that returns a main object for the module
+            modobj = dynmod.get_object(self)
+            mod1.close()        # I'm not shure, if this is necessary
+        except:
+            print 'Something went wrong'
+        finally:
+            mod1.close()
         
-
+        return modobj
+        
     #=================================================================================================
     # END OF CLASS Application
     #=================================================================================================
